@@ -1,0 +1,17 @@
+#!/bin/sh -e
+# Questo CGI fornisce i dati a censura.bofh.it.
+
+LISTS_DIR=~admin/censura/lists
+
+AAMS_NUM=$(wc -l < $LISTS_DIR/aams)
+CNCPO_NUM=$(wc -l < $LISTS_DIR/cncpo)
+
+cat <<END
+Content-type: application/json
+
+{
+  "aams": ${AAMS_NUM},
+  "cncpo": ${CNCPO_NUM}
+}
+END
+

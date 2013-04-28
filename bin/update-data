@@ -1,0 +1,147 @@
+#!/usr/bin/perl
+# vim: shiftwidth=4 tabstop=4
+#
+# Copyright 2013 by Marco d'Itri <md@linux.it>.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+
+use warnings;
+use strict;
+
+use FindBin qw($RealBin);
+use lib ("$RealBin/../lib");
+
+use Censorship::Schema;
+use File::Slurp;
+use LWP::Simple;
+use JSON;
+
+my $schema = Censorship::Schema->connect("dbi:SQLite:$RealBin/../censorship.sqlite");
+
+##############################################################################
+{
+
+my $c = $schema->resultset('Domain')->search([
+	'request.end' => undef,
+	'request.end' => '',
+], {
+	join => [ 'request' ],
+	columns => [ 'name' ],
+	distinct => 1,
+});
+
+my $count = $c->count || die;
+my $remote_data =
+	get_remote_data('http://anubi.seeweb.it/cgi-bin/censorship-stats');
+my $num_cncpo = $remote_data->{cncpo} || die;
+my $num_aams  = $remote_data->{aams}  || die;
+
+my $stats = <<END;
+[%
+  stats.censored.ag = $count;
+  stats.censored.cncpo = $num_cncpo;
+  stats.censored.aams = $num_aams;
+  stats.censored.total = stats.censored.ag + stats.censored.cncpo
+    + stats.censored.aams;
+%]
+END
+write_file("$RealBin/../ttlib/data.tt2", $stats);
+
+}
+
+##############################################################################
+{
+
+my $c = $schema->resultset('Domain')->search({
+	-and => [
+		-or => [
+			'request.end' => undef,
+			'request.end' => '',
+		],
+		-and => [
+			'test_url' => { '!=', undef },
+			'test_url' => { '!=', '' },
+		],
+	],
+}, {
+	join => [ 'request' ],
+	order_by => { -asc => 'request.date' },
+	distinct => 1,
+});
+
+my @data = map { {
+	descr => 	$_->name,
+	url =>	 	$_->test_url,
+} } $c->all;
+
+# extra tests
+push(@data, {
+	descr	=> 's51.radikal.ru',
+	url		=> 'http://s51.radikal.ru/i132/1001/ff/9bc232c524be.png',
+}, {
+	descr	=> 'www.fulltiltpoker.com',
+	url		=> 'http://www.fulltiltpoker.com/images/com/en/content/how-to-play/game-types/rush-poker/logo.jpg',
+});
+
+my $text = encode_json(\@data);
+
+$text = "var tests_list = $text;\n";
+write_file("$RealBin/../htdocs/data/censorship_probes.js", $text);
+
+}
+
+##############################################################################
+{
+
+my $c = $schema->resultset('Domain')->search([
+], {
+	join => [ 'request' ],
+	order_by => { -asc => 'request.date' },
+});
+
+# Aggregate the data: for each day in the database compute the algebraic sum
+# of the number of censored or uncensored domains.
+my %deltas;
+foreach ($c->all) {
+	$deltas{ $_->request->date->ymd }->{count}++;
+	$deltas{ $_->request->date->ymd }->{dt} = $_->request->date;
+	next if not $_->request->end;
+	$deltas{ $_->request->end->ymd  }->{count}--;
+	$deltas{ $_->request->end->ymd  }->{dt} = $_->request->end;
+}
+
+my @dates;
+my $count = 0;
+foreach my $day (sort keys %deltas) {
+	$count += $deltas{$day}->{count};
+	my $jsdate = $deltas{$day}->{dt}->epoch * 1000;
+	push(@dates, [ $jsdate, $count ]);
+}
+
+# Add a final data point with today's date and the value of the second last
+# to improve the graph.
+push(@dates, [ DateTime->now->epoch * 1000, $dates[$#dates][1] ]);
+
+#use Data::Printer; p @dates; exit;
+
+my $text = encode_json(\@dates);
+
+$text = "var total_domains_data = $text;\n";
+write_file("$RealBin/../htdocs/data/total_domains.js", $text);
+
+}
+
+exit;
+
+##############################################################################
+sub get_remote_data {
+	my ($url) = @_;
+
+	my $text = get($url);
+	die "The remote data API returned no data" if not $text;
+	return decode_json($text);
+}
+

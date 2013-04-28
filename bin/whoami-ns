@@ -1,0 +1,127 @@
+#!/usr/bin/perl
+# vim: shiftwidth=4 tabstop=4
+#
+# Copyright 2013 by Marco d'Itri <md@linux.it>.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# The data directory needs to be cleaned up of old entries periodically:
+# find /dev/shm/whoami-ns/ -amin +30 -type f -print0 | xargs -0 --no-run-if-empty rm
+
+use warnings;
+use strict;
+
+use Net::DNS::Nameserver;
+use Net::Server::Daemonize qw(daemonize);
+use File::Slurp;
+use IO::File;
+
+my @listen = qw(85.94.204.153 2001:4b78:2000::53);
+my $DB_Dir = '/dev/shm/whoami-ns';
+my $Debug_Log = '/tmp/whoami-ns.log';
+my $My_Zone = 'whoami.bofh.it';		# zone apex
+my $My_NS = 'whoami.ns.bofh.it';	# name server for the zone
+
+# This is just a simple way of organizing configuration values, not a
+# generic data structure to support serving arbitrary DNS records.
+my $AuthRR = {
+	apex => {
+		SOA =>	Net::DNS::RR->new("$My_Zone 172800 IN SOA "
+					. "$My_NS md.linux.it 1 600 600 660000 600"),
+		NS =>	Net::DNS::RR->new("$My_Zone 172800 IN NS $My_NS"),
+		TXT =>	sub { Net::DNS::RR->new(qq#$My_Zone 30 IN TXT "From $_[3]"#) },
+	},
+	all => {
+		AAAA =>	Net::DNS::RR->new(name => '', ttl => 30, type => 'AAAA',
+					address => '2001:4b78:2000::53'),
+		A =>	Net::DNS::RR->new(name => '', ttl => 30, type => 'A',
+					address => '85.94.204.153'),
+	},
+	version => Net::DNS::RR->new("VERSION.BIND 30 CH TXT "
+		. qq#"Net::DNS::Nameserver $Net::DNS::Nameserver::VERSION"#),
+};
+
+##############################################################################
+my $Log_FH;
+if ($Debug_Log) {
+	$Log_FH = IO::File->new($Debug_Log, '>>') or die "open($Debug_Log): $!";
+	$Log_FH->autoflush;
+}
+
+-d $DB_Dir or mkdir $DB_Dir or die "mkdir($DB_Dir): $!";
+
+my $ns = Net::DNS::Nameserver->new(
+	LocalAddr	=> \@listen,
+	ReplyHandler => \&reply_handler,
+	Verbose		=> 0,
+) or die;
+
+daemonize('md', 'md', '/var/run/whoami-ns.pid');
+
+$ns->main_loop;
+
+##############################################################################
+sub reply_handler {
+	my ($qname, $qclass, $qtype, $peerhost, $packet) = @_;
+	my ($rcode, @ans, @auth, @add);
+
+	$qname ||= '.';
+	my $query = lc $qname;
+
+	print $Log_FH "[$peerhost] $query $qclass $qtype\n" if $Log_FH;
+
+	if ($qclass eq 'CH' and $qtype eq 'TXT') {
+		if ($query eq 'version.bind') {
+			return ('NOERROR', [$AuthRR->{version}], [], [], {});
+		}
+	}
+
+	# Only accept queries for records for which we are authoritative,
+	# or else send the smallest possible answer to not be an attractive
+	# reflector for spoofed DDoS attacks.
+	return ('REFUSED', [], [], [], {})
+		if $query !~ /\b$My_Zone$/o or $qclass ne 'IN';
+
+	#return ('NXDOMAIN', $AuthRR->{apex}->{SOA}, [], [], { aa => 1 })
+	#	if ...;
+
+	my $where = $query eq $My_Zone ? 'apex' : 'all';
+
+	my @what;
+	if (exists $AuthRR->{$where}->{$qtype}) {
+		@what = $qtype;
+	} elsif ($qtype eq 'ANY') {
+		@what = keys %{$AuthRR->{$where}}
+	}
+	push(@ans, map {
+		ref $AuthRR->{$where}->{$_} eq 'CODE'  ? $AuthRR->{$where}->{$_}->(@_):
+		ref $AuthRR->{$where}->{$_} eq 'ARRAY' ? @{ $AuthRR->{$where}->{$_} } :
+			$AuthRR->{$where}->{$_}
+	} @what);
+
+	# Set the record name in the Net::DNS::RR object for the answers which 
+	# are not at the apex (so they do not have it set in $AuthRR).
+	if ($where eq 'all') {
+		$_->name($qname) foreach @ans;
+	}
+
+	# the magic happens here: for some queries, log the IP of the query source
+	if ($where eq 'all' and $qtype =~ /^(?:A|AAAA|ANY)$/) {
+		db_add($1, $peerhost) if $query =~ /^([a-z0-9-]+)\./i;
+	}
+
+	return ($rcode || 'NOERROR', \@ans, \@auth, \@add, { aa => 1 });
+}
+
+##############################################################################
+sub db_add {
+	my ($key, $value) = @_;
+	$key =~ s#/#_#g;
+
+	write_file("$DB_Dir/$key", { err_mode => 'quiet', atomic => 1 },
+		"$value\n");
+}
+

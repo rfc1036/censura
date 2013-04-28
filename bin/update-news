@@ -1,0 +1,150 @@
+#!/usr/bin/perl
+# vim: shiftwidth=4 tabstop=4
+#
+# Copyright 2013 by Marco d'Itri <md@linux.it>.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# Test with:
+# http://feed1.w3.org/check.cgi?url=http%3A//censura.bofh.it/atom.xml
+
+use warnings;
+use strict;
+use feature qw(state);
+
+use FindBin qw($RealBin);
+use lib ("$RealBin/../lib");
+
+use Censorship::Schema;
+use XML::Atom::Feed;
+use XML::Atom::Entry;
+$XML::Atom::DefaultVersion = '1.0';
+use DateTime::Format::Atom;
+use Template;
+use File::Slurp;
+
+my $schema = Censorship::Schema->connect("dbi:SQLite:$RealBin/../censorship.sqlite");
+
+my $c = $schema->resultset('Event')->search([], {
+	order_by => { '-desc' => 'me.time' },
+	rows => 10,
+});
+
+#print join(' ', $_->id, $_->time->ymd, $_->type, $_->description). "\n";
+#	foreach $c->all;
+
+##############################################################################
+my $feed = build_atom_feed($c);
+my $xml = $feed->as_xml_ws;
+write_file("$RealBin/../htdocs/atom.xml", $xml);
+
+exit;
+
+##############################################################################
+sub build_atom_feed {
+	my ($rs) = @_;
+
+	my $body_template = join('', <DATA>);
+	my $template = Template->new(
+		POST_CHOMP => 1,
+		DEBUG_UNDEF => 1,
+	) or die "Template->new: $Template::ERROR";
+
+	my $feed = XML::Atom::Feed->new;
+	$feed->title('Osservatorio censura');
+	$feed->subtitle('Osservatorio sulla censura di Internet in Italia.');
+	$feed->id('tag:censura.bofh.it,2013:feed');
+	$feed->updated($rs->first->time->atom_date);
+	$feed->language('it');
+	$feed->icon('http://censura.bofh.it/favicon.ico');
+
+	my $author = XML::Atom::Person->new;
+	$author->name("Marco d'Itri");
+	$author->email('md@linux.it');
+	$author->uri('http://www.linux.it/~md/');
+	$feed->author($author);
+
+	my @atom_links = (
+		[qw(self application/atom+xml http://censura.bofh.it/atom.xml)],
+		[qw(alternate text/html http://censura.bofh.it/)],
+		[qw(license text/html http://creativecommons.org/licenses/by-sa/3.0/)],
+	);
+	foreach my $l (@atom_links) {
+		my $link = XML::Atom::Link->new;
+		$link->rel($l->[0]);
+		$link->type($l->[1]);
+		$link->href($l->[2]);
+		$feed->add_link($link);
+	}
+
+	my $rights = XML::Atom::Content->new(
+		Type => 'html',
+		Body => "&copy; 2012 Marco d'Itri - CC-BY-SA",
+	);
+	$feed->rights($rights);
+
+	foreach my $request ($rs->all) {
+		my $entry = XML::Atom::Entry->new;
+		$entry->id('tag:censura.bofh.it,2013:feed:news-' . $request->id
+			. ($request->type eq 'e' ? '-end' : ''));
+		if ($request->type eq 's') {
+			$entry->title('Nuova censura: '   . $request->description);
+		} else {
+			$entry->title('Rimossa censura: ' . $request->description);
+		}
+		$entry->updated($request->time->atom_date);
+
+		my $body;
+		my $vars = { request => $request };
+		$template->process(\$body_template, $vars, \$body)
+			or die $template->error;
+		$body =~ s/\n$//;
+
+		my $c = XML::Atom::Content->new(Type => 'xhtml', Body => $body);
+		$entry->content($c);
+		$feed->add_entry($entry);
+	}
+
+	return $feed;
+}
+
+##############################################################################
+# as_xml redefined to include a stylesheet
+sub XML::Atom::Base::as_xml_ws {
+	my $obj = shift;
+	my $doc = XML::LibXML::Document->new('1.0', 'UTF-8');
+	$doc->setDocumentElement($obj->elem->cloneNode(1));
+
+	my $pi = $doc->createProcessingInstruction("xml-stylesheet");
+	$pi->setData(
+		type => 'text/css',
+		href => 'http://www.blogger.com/styles/atom.css'
+	);
+	$doc->insertBefore($pi, $doc->documentElement);
+	return $doc->toString(1);
+}
+
+# just for convenience
+sub DateTime::atom_date {
+	state $formatter ||= DateTime::Format::Atom->new;
+	return $_[0]->clone
+		->set_formatter($formatter)
+		->set_time_zone('UTC');
+}
+
+##############################################################################
+__DATA__
+<p>Entità richiedente: [% request.by.entity %].</p>
+<p class="censored-domains">Domini censurati: 
+[%- FOREACH domain = request.domains %]
+<a rel="nofollow" href="http://[% domain.name | html %]/">[% domain.name | html %]</a>
+[%- ' (e IP)' IF domain.also_ip %]
+[% ', ' IF NOT loop.last %]
+[% END %]
+.</p>
+[% IF request.notes %]
+<p>Note: [% request.notes | remove('\(![A-Z]+\) ?') %]</p>
+[% END %]

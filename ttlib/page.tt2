@@ -1,0 +1,159 @@
+[%
+  site.use_cdn = 1;
+
+  #root_prefix = '/censura';
+  root_prefix = '/' IF site.use_cdn;
+
+  site.url = {
+    root   = "${root_prefix}"
+    css    = "${root_prefix}css"
+    js     = "${root_prefix}js"
+    images = "${root_prefix}img"
+    bs     = "${root_prefix}bootstrap"
+  };
+
+  site.name = "Osservatorio censura";
+
+  page.files.js = [ ]
+  page.files.css = [ ]
+  page.lang = 'it'
+  # page.description = ''
+  # page.title = ''
+  # page.h1 = ''
+%]
+[% BLOCK page %]
+<!DOCTYPE html>
+<html [% 'lang="' _ page.lang _ '"' IF page.lang %]>
+    <head>
+        <meta charset="utf-8">
+        <title>[% site.name | html %][% ': ' _ page.title | html IF page.title %]</title>
+[% IF page.description %]
+        <meta name="description" content="[% page.description | html %]">
+[% END %]
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+[% IF site.use_cdn AND site.no_bootwatch %]
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/css/bootstrap-combined.min.css">
+[% ELSIF site.no_bootwatch %]
+        <link rel="stylesheet" href="[% site.url.bs %]/css/bootstrap.min.css">
+        <link rel="stylesheet" href="[% site.url.bs %]/css/bootstrap-responsive.min.css">
+[% ELSIF site.use_cdn %]
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootswatch/2.3.1/spacelab/bootstrap.min.css">
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/css/bootstrap-responsive.min.css">
+[% ELSE %]
+        <link rel="stylesheet" href="[% site.url.bs %]/css/bootstrap-spacelab.min.css">
+        <link rel="stylesheet" href="[% site.url.bs %]/css/bootstrap-responsive.min.css">
+[% END %]
+        <style>
+body { padding-top: 60px }
+@media (max-width: 979px) { body { padding-top: 0 } }
+[% page.css IF page.css %]
+        </style>
+[% FOREACH file IN page.files.css %]
+        <link rel="stylesheet" href="[% file %]">
+[% END %]
+[% page.head IF page.head %]
+
+        <!--[if lt IE 9]>
+[% IF site.use_cdn %]
+            <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.6.2/html5shiv.js"></script>
+[% ELSE %]
+            <script>window.html5 || document.write('<script src="js/vendor/html5shiv.js"><\/script>')</script>
+[% END %]
+        <![endif]-->
+    </head>
+    <body>
+
+        <div class="navbar navbar-fixed-top">
+            <div class="navbar-inner">
+                <div class="container">
+                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </a>
+                    <a class="brand" href="[% site.url.root %]">[% site.name | html %]</a>
+                    <div class="nav-collapse collapse">
+                        <ul class="nav">
+[%
+# Confrontiamo il nome del template con l'URL del link nella navbar per
+# impostare la classe corrispondente alla pagina stessa.
+our_name = template.name;
+our_name = our_name.remove('\.tt2$') _ '.html';
+our_name = our_name.remove('index\.html$');
+%]
+[% MACRO navlink(url, name) BLOCK %]
+<li[% ' class="active"' IF url == our_name %]>[% %]
+<a href="[% site.url.root %][% url %]">[% name %]</a></li>
+[% END %]
+                            [% navlink('', 'Home') %]
+                            [% navlink('elenchi.html', 'Elenchi') %]
+                            [% navlink('storico.html', 'Storico') %]
+                            [% navlink('grafici.html', 'Grafici') %]
+                            [% navlink('tecnologie.html', 'Tecnologie') %]
+                            [% navlink('contatti.html', 'Chi sono') %]
+[% IF 0 %]
+                            <li><a href="#contact">Contact</a></li>
+                            <li class="dropdown">
+                                <a href="#" class="dropdown-toggle" data-toggle="dropdown">Dropdown <b class="caret"></b></a>
+                                <ul class="dropdown-menu">
+                                    <li><a href="#">Action</a></li>
+                                    <li><a href="#">Another action</a></li>
+                                    <li><a href="#">Something else here</a></li>
+                                    <li class="divider"></li>
+                                    <li class="nav-header">Nav header</li>
+                                    <li><a href="#">Separated link</a></li>
+                                    <li><a href="#">One more separated link</a></li>
+                                </ul>
+                            </li>
+[% END %]
+                        </ul>
+                    </div><!--/.nav-collapse -->
+                </div>
+            </div>
+        </div>
+
+        <div class="container main-body">
+[% IF page.h1 %]
+            <div class="page-header"><h1>[% page.h1 | html %]</h1></div>
+
+[% END %]
+[% content %]
+
+            <hr>
+            <footer>
+                <p>&copy; 2012-2013 <a rel="author" href="http://www.linux.it/~md/">Marco d'Itri</a> - <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a></p>
+            </footer>
+        </div>
+
+[% IF site.use_cdn %]
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+[% ELSE %]
+        <script>window.jQuery || document.write('<script src="js/vendor/jquery-1.9.1.min.js"><\/script>')</script>
+[% END %]
+[% IF site.use_cdn %]
+        <script src="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/js/bootstrap.min.js"></script>
+[% ELSE %]
+        <script src="[% site.url.bs %]/js/bootstrap.min.js"></script>
+[% END %]
+[% FOREACH file IN page.files.js %]
+        <script src="[% file %]"></script>
+[% END %]
+[% IF page.js %]
+<script>
+[% page.js %]
+</script>
+[% END %]
+
+    </body>
+</html>
+[% END %]
+[% # aggiunge le icone
+MACRO format_note(text) BLOCK;
+  IF text;
+    '<span class="autotip">';
+    text | html | replace('\(!W\)', '<span class="text"><i class="icon-warning-sign"></i></span>');
+   '</span>';
+  END;
+END;
+%]

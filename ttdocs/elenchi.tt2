@@ -1,0 +1,156 @@
+[% page.title = 'Elenchi' %]
+[% page.css = BLOCK %]
+.feed {
+  margin-left: 3px;
+  padding: 0 0 0 19px;
+  background: url("[% site.url.images %]/feed-icon-14x14.png") no-repeat 0 50%;
+}
+[% END %]
+[% page.head = BLOCK %]
+    <link href="[% site.url.root %]atom.xml" type="application/atom+xml" 
+     rel="alternate" title="Aggiornamenti sulla censura">
+[% END %]
+[% page.js = BLOCK %]
+$(document).ready(function() {
+$('span.autotip').each(function() {
+  var oldtext = $(this).html();
+  $(this).html('Note').addClass('label label-info');
+  $(this).popover({
+    title: 'Note',
+    content: oldtext,
+    html: true,
+    placement: 'left',
+    trigger: 'hover'
+  });
+});
+
+$("#domainstbl" ).tablesorter({ sortList: [[0, 1], [2, 1], [1, 0]] });
+$("#requeststbl").tablesorter({ sortList: [[0, 1], [1, 1]] });
+});
+[% END %]
+[% PROCESS tablesorter.tt2 %]
+[% PROCESS database.tt2 %]
+[% PROCESS data.tt2 %]
+[% WRAPPER page %]
+<h2>Provvedimenti dell'autorità giudiziaria</h2>
+<p>Alcuni siti sono censurati in seguito a specifici provvedimenti
+dell'autorità giudiziaria. I decreti di sequestro sono inviati via fax
+agli ISP, ma non esiste una lista canonica dei destinatari e non tutti
+li ricevono sempre.</p>
+<p>In genere, in questi casi l'utente non viene reindirizzato a un 
+apposito sito di spiegazioni e quindi può non rendersi conto che il sito
+che voleva visitare non funziona perché è stato censurato.</p>
+<p>Al momento non risulta che alcuno dei procedimenti penali
+relativi sia arrivato a un rinvio a giudizio.</p>
+
+<p>È disponibile un <a class="feed" href="[% site.url.root %]atom.xml">feed 
+ATOM di questi provvedimenti</a>.
+
+<table id="domainstbl" class="table table-bordered table-hover table-condensed tablesorter">
+<caption>Domini attualmente censurati</caption>
+<thead>
+<tr>
+ <td>Data</td>
+ <td>Dominio</td>
+ <td>Categoria</td>
+ <td>Origine</td>
+ <td>Note</td>
+</tr>
+</thead>
+<tbody>
+[% FOREACH domain = domains.search([
+     'request.end', undef,
+     'request.end', ''
+   ], {
+     'order_by' => { '-desc' => 'request.date' },
+     'join' => [ 'request' ]
+   }) %]
+<tr>
+ <td>[% domain.request.date.ymd %]</td>
+ <td><a rel="nofollow" href="http://[% domain.name | html %]/">[% domain.name | html %]</a></td>
+ <td>[% domain.request.description | html %]</td>
+ <td>[% domain.request.by.entity | html %]</td>
+ <td>[% IF domain.also_future_ip %]
+<span class="label label-important">IP futuri</span>
+[% ELSIF domain.also_ip %]
+<span class="label label-warning">IP</span>
+[% END %]
+[% format_note(domain.notes) %]</td>
+</tr>
+
+[% END %]
+</tbody>
+</table>
+
+<dl class="dl-horizontal">
+<dt><span class="label label-warning">IP</span></dt>
+<dd>È richiesta la censura anche del IP associato al dominio.</dd>
+<dt><span class="label label-important">IP futuri</span></dt>
+<dd>È richiesta la censura anche degli IP che saranno associati al dominio in futuro.</dd>
+</dl>
+
+<table id="requeststbl" class="table table-bordered table-hover table-condensed tablesorter">
+<caption>Provvedimenti di censura in vigore</caption>
+<thead>
+<tr>
+ <td>Data</td>
+ <td>Origine</td>
+ <td>Categoria</td>
+ <td>Note</td>
+</tr>
+</thead>
+<tbody>
+[% FOREACH request = requests.search([
+     'end', undef,
+     'end', ''
+   ], {
+     order_by => { '-desc' => 'date' }
+   })
+%]
+<tr>
+ <td>[% request.date.ymd %]</td>
+ <td>[% request.by.entity | html %]</td>
+ <td>[% request.description | html %]</td>
+ <td>[% IF request.attachment == '' %]
+<span class="label label-warning">ND</span>
+[% END %]
+[% format_note(request.notes) %]</td>
+</tr>
+
+[% END %]
+</tbody>
+</table>
+
+<dl class="dl-horizontal">
+<dt><span class="label label-warning">ND</span></dt>
+<dd>Non ho potuto esaminare il decreto di sequestro.</dd>
+</dl>
+
+<h2>Agenzia delle Dogane e dei Monopoli (ex AAMS)</h2>
+<p>La legge finanziaria 2006 ha stabilito l'obbligo per gli Internet
+provider italiani di censurare un elenco di siti di gioco d'azzardo di
+aziende non autorizzate in Italia, pubblicato dall'Amministrazione
+Autonoma dei Monopoli di Stato (incorporata dal agosto 2012
+nell'Agenzia delle Dogane). Questo è stato l'inizio della censura
+di Internet in Italia.</p>
+<p><a href="http://www.aams.gov.it/site.php?id=2484">L'elenco dei siti
+censurati</a> è reperibile sul sito di AAMS.</p>
+<p>Sembrano elencati non solo siti che permettono il gioco, ma anche
+portali con link e pubblicità.</p>
+<p>Questa lista contiene [% stats.censored.aams %] siti.</p>
+
+<h2>Centro nazionale per il contrasto alla pedopornografia online</h2>
+<p>Nel gennaio 2007 il Ministro delle comunicazioni ha firmato il
+decreto attuativo della 
+<a href="http://www.camera.it/parlam/leggi/06038l.htm">Legge 38 del 6
+febbraio 2006</a> (detto <em>Decreto Gentiloni</em>),
+che ha istituito presso il Ministero dell'interno una struttura 
+denominata <em>Centro nazionale per il contrasto della 
+pedopornografia sulla rete INTERNET</em> con tra i propri scopi
+la gestione un elenco di siti che devono essere censurati dagli Internet
+Provider italiani.</p>
+<p>L'elenco dei siti censurati è accessibile solo agli ISP accreditati
+e la Polizia ritiene che sia illegale divulgarlo, ma nel 2009 una 
+copia è stata pubblicata da Wikileaks.</p>
+<p>Questa lista contiene [% stats.censored.cncpo %] siti.</p>
+[% END %]

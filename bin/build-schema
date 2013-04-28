@@ -1,0 +1,27 @@
+#!/usr/bin/perl
+# vim: shiftwidth=4 tabstop=4
+
+use warnings;
+use strict;
+
+use FindBin qw($RealBin);
+
+use DBIx::Class::Schema::Loader qw(make_schema_at);
+
+my $dbfile = "$RealBin/../censorship.sqlite";
+my $dbschema = "$RealBin/../censorship.sql";
+
+system("sqlite3 $dbfile < $dbschema") if not -e $dbfile;
+
+make_schema_at(
+	'Censorship::Schema', {
+		#debug			=> 1,
+		#use_moose		=> 1,
+		generate_pod	=> 0,
+		dump_directory	=> "$RealBin/../lib",
+		components		=> [qw(InflateColumn::DateTime)],
+		datetime_timezone => 'Europe/Rome',
+    },
+	[ "dbi:SQLite:dbname=$dbfile" ],
+);
+

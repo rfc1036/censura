@@ -1,0 +1,12 @@
+htdocs/*.html
+htdocs/atom.xml
+htdocs/data/
+
+lib/Censorship/Schema.pm
+lib/Censorship/Schema/Result/Censor.pm
+lib/Censorship/Schema/Result/Domain.pm
+lib/Censorship/Schema/Result/Link.pm
+lib/Censorship/Schema/Result/Request.pm
+
+ttlib/.stamp-database
+ttlib/data.tt2

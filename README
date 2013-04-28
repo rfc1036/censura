@@ -1,0 +1,22 @@
+These are the templates and programs which are used to maintain
+<http://censura.bofh.it/>.
+
+After generating the database classes with the build-schema script, the
+static pages can be generated with the update script.
+
+Perl dependencies:
+
+DateTime::Format::Atom
+DateTime::Format::SQLite	libdatetime-format-sqlite-perl
+DBIx::Class			libdbix-class-perl
+DBIx::Class::Schema::Loader	libdbix-class-schema-loader-perl
+File::Slurp			libfile-slurp-perl
+JSON				libjson-perl
+LWP::Simple			libwww-perl
+Net::DNS			libnet-dns-perl
+Net::Server			libnet-server-perl
+Plack				libplack-perl
+Template			libtemplate-perl
+XML::Atom			libxml-atom-perl
+
+Marco d'Itri <md@linux.it>

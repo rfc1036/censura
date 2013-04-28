@@ -1,0 +1,33 @@
+#!/bin/sh -e
+
+#if [ "$(hostname)" = 'bongo.bofh.it' ]; then
+#  ttargs="$ttargs --define root_prefix=/censura"
+#fi
+
+older_than() {
+  local timestamp=$(stat -c %Y "$1")
+  local now=$(date +%s)
+  if [ $(($now - $timestamp)) -gt "$2" ]; then return 0; else return 1; fi
+}
+
+older_than_nhours() { older_than "$1" $(($2 * 3600 )); }
+older_than_ndays()  { older_than "$1" $(($2 * 86400)); }
+
+if [ censorship.sqlite -nt htdocs/data/total_domains.js ] || \
+      older_than_nhours ttlib/data.tt2 23; then
+  echo "Rebuilding (data)..."
+  ./bin/update-data
+fi
+
+if [ censorship.sqlite -nt htdocs/atom.xml ]; then
+  ./bin/update-news
+fi
+
+if [ censorship.sqlite -nt ttlib/.stamp-database ]; then
+  echo "Rebuilding (database)..."
+  touch ttlib/.stamp-database
+fi
+
+exec \
+ttree -f ttlib/ttree.cfg $ttargs "$@"
+

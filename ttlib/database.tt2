@@ -1,0 +1,13 @@
+[% PERL %]
+use Cwd;
+use lib (getcwd . '/lib');
+use Censorship::Schema;
+
+my $schema = Censorship::Schema->connect('dbi:SQLite:censorship.sqlite');
+
+$stash->update({
+	censors		=> $schema->resultset('Censor'),
+	requests	=> $schema->resultset('Request'),
+	domains		=> $schema->resultset('Domain'),
+});
+[% END %]
