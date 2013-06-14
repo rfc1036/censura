@@ -29,11 +29,11 @@ use File::Slurp;
 my $schema = Censorship::Schema->connect("dbi:SQLite:$RealBin/../censorship.sqlite");
 
 my $c = $schema->resultset('Event')->search([], {
-	order_by => { '-desc' => 'me.time' },
+	order_by => [ { -desc => 'me.time', }, { -desc => 'me.id' } ],
 	rows => 10,
 });
 
-#print join(' ', $_->id, $_->time->ymd, $_->type, $_->description). "\n";
+#print join(' ', $_->id, $_->time->ymd, $_->type, $_->description). "\n"
 #	foreach $c->all;
 
 ##############################################################################
