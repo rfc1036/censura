@@ -91,5 +91,5 @@ $(document).ready(function() {
 <div id="total_domains_graph" style="width: 80%; height: 300px"></div>
 <p style="margin-bottom: 2em"><small>Selezionare un'area per ingrandirla 
 o ripristinare il grafico intero con un doppio click.</small></p>
-<p>N.B.: il grafico non comprende i siti censurati da CPCPO e AAMS.</p>
+<p>N.B.: il grafico non comprende i siti censurati da CNCPO e AAMS.</p>
 [% END %]
