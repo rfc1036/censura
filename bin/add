@@ -1,0 +1,80 @@
+#!/usr/bin/perl
+# vim: shiftwidth=4 tabstop=4
+#
+# Copyright 2014 by Marco d'Itri <md@linux.it>.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+
+use warnings;
+use strict;
+
+use DBI;
+use File::Slurp;
+use Getopt::Long;
+
+my ($file_list, $opt_ip, $opt_fip, $opt_help);
+my $result = GetOptions(
+	'file=s'		=> \$file_list,
+	'ip'			=> \$opt_ip,
+	'future-ip|fip'	=> \$opt_fip,
+	'help'			=> \$opt_help,
+) or exit 255;
+
+if ($opt_help) {
+	print "Usage: $0 REQUEST-ID\n";
+	exit 0;
+}
+
+my $req = $ARGV[0];
+
+die "Invalid request ID '$req'" if $req and not $req =~ /^\d+/;
+
+my @domains;
+if ($file_list) {
+	@domains = read_file($file_list);
+} else {
+	@domains = <STDIN>;
+}
+
+@domains = map { lc } grep { defined $_ and /./ } @domains;
+chomp @domains;
+
+foreach (@domains) {
+	die "Invalid domain '$_'" if not /^[a-z0-9\.-]+$/;
+}
+
+my $dbh = DBI->connect('dbi:SQLite:censorship.sqlite', '', '', {
+	RaiseError	=> 1,
+	AutoCommit	=> 0,
+}) or die $DBI::errstr;
+
+# determine the ID of the last request created if it was not specified
+if (not $req) {
+	my $sth = $dbh->prepare('SELECT MAX(id) FROM requests');
+	$sth->execute;
+	($req) = $sth->fetchrow_array or die;
+	$sth->finish;
+	print "Using the last request ID $req.\n";
+}
+
+my $also_ip = '';
+$also_ip = 'Y' if $opt_ip;
+my $also_future_ip = '';
+$also_future_ip = 'Y' if $opt_fip;
+
+my $sth = $dbh->prepare('INSERT INTO "domains" VALUES(?, ?, ?, ?, ?, "", "")');
+
+$sth->execute(undef, $req, $_, $also_ip, $also_future_ip) foreach @domains;
+
+$sth->finish;
+
+$dbh->commit;
+
+print "Added " . scalar @domains . " domain(s).\n";
+
+$dbh->disconnect;
+exit;
+
