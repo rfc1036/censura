@@ -5,6 +5,7 @@ htdocs/data/
 lib/Censorship/Schema.pm
 lib/Censorship/Schema/Result/Censor.pm
 lib/Censorship/Schema/Result/Domain.pm
+lib/Censorship/Schema/Result/DomainAgcom.pm
 lib/Censorship/Schema/Result/Link.pm
 lib/Censorship/Schema/Result/Request.pm
 

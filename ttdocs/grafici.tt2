@@ -1,0 +1,95 @@
+[% page.title = 'Grafici';
+  page.files.js.push('//cdnjs.cloudflare.com/ajax/libs/flot/0.7/jquery.flot.min.js');
+  page.files.js.push('//cdnjs.cloudflare.com/ajax/libs/flot/0.7/jquery.flot.selection.min.js');
+  page.files.js.push(site.url.root _ 'data/total_domains.js');
+%]
+[% ___page.css = BLOCK %]
+    html, body {
+        height: 100%; /* make the percentage height on the graph work */
+    }
+[% END %]
+[% page.css = BLOCK %]
+  #tooltip {
+      position: absolute;
+      display: none;
+      border: 1px solid #fdd;
+      padding: 2px;
+      background-color: #fee;
+      opacity: 0.80;
+  }
+[% END %]
+[% page.head = BLOCK %]
+  <!--[if lte IE 8]><script src="[% site.url.js %]/vendor/excanvas.min.js"></script><![endif]-->
+[% END %]
+[% page.js = BLOCK %]
+$(document).ready(function() {
+  var options = {
+      xaxis: {
+        mode: 'time',
+        monthNames: [ 'gen', 'feb', 'mar', 'apr', 'mag', 'giu',
+                      'lug', 'ago', 'sep', 'ott', 'nov', 'dic' ]
+      },
+      lines: { show: true, fill: true, steps: true },
+      points: { show: true },
+      grid: { hoverable: true },
+
+      minTickSize: [1, 'day'],
+      selection: { mode: 'x' }
+  };
+
+  var placeholder = $('#total_domains_graph');
+
+  var plot = $.plot(placeholder, [ total_domains_data ], options);
+
+  placeholder.bind('plotselected', function(event, ranges) {
+    plot = $.plot(placeholder, [ total_domains_data ],
+      $.extend(true, {}, options, {
+        xaxis: { min: ranges.xaxis.from, max: ranges.xaxis.to }
+      })
+    );
+  });
+
+  // redraw the graph
+  placeholder.dblclick(function() {
+    plot = $.plot(placeholder, [ total_domains_data ], options);
+  });
+
+  function show_tooltip(x, y, contents) {
+    $('<div id="tooltip">' + contents + '</div>').css({
+      top: y + 5,
+      left: x + 5,
+    }).appendTo('body').fadeIn(200);
+  }
+
+  var previousPoint = null;
+  placeholder.bind('plothover', function(event, pos, item) {
+    if (!item) {
+      if (previousPoint == null) { return }
+      $('#tooltip').remove();
+      previousPoint = null;
+      return;
+    }
+    if (item.dataIndex == previousPoint) {
+      return;
+    }
+
+    $('#tooltip').remove();
+    previousPoint = item.dataIndex;
+
+    var d = new Date(item.datapoint[0]);
+    var date_string = d.getFullYear() + '-' + (d.getMonth() + 1)
+      + '-' + d.getDate();
+    var sites = item.datapoint[1];
+
+    show_tooltip(item.pageX, item.pageY, date_string + ': ' + sites);
+  });
+});
+[% END %]
+[% WRAPPER page %]
+<p>Numero di siti censurati:</p>
+[%# <!div id="total_domains_graph" style="width: 80%; height: 70%; margin-bottom: 2em"></div> %]
+<div id="total_domains_graph" style="width: 80%; height: 300px"></div>
+<p style="margin-bottom: 2em"><small>Selezionare un'area per ingrandirla 
+o ripristinare il grafico intero con un doppio click.</small></p>
+<p>N.B.: il grafico non comprende i siti censurati da CNCPO e AAMS.</p>
+[% END %]

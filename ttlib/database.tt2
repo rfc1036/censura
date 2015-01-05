@@ -9,5 +9,6 @@ $stash->update({
 	censors		=> $schema->resultset('Censor'),
 	requests	=> $schema->resultset('Request'),
 	domains		=> $schema->resultset('Domain'),
+	domains_agcom	=> $schema->resultset('DomainAgcom'),
 });
 [% END %]

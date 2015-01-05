@@ -1,0 +1,87 @@
+[% page.title = 'Censura di AGCOM' %]
+[% page.css = BLOCK %]
+.feed {
+  margin-left: 3px;
+  padding: 0 0 0 19px;
+  background: url("[% site.url.images %]/feed-icon-14x14.png") no-repeat 0 50%;
+}
+[% END %]
+[% IF 0 %]
+[ % page.head = BLOCK %]
+    <link href="[% site.url.root %]atom.xml" type="application/atom+xml"
+     rel="alternate" title="Aggiornamenti sulla censura">
+[% END %]
+[% page.js = BLOCK %]
+$(document).ready(function() {
+$('span.autotip').each(function() {
+  var oldtext = $(this).html();
+  $(this).html('Note').addClass('label label-info');
+  $(this).popover({
+    title: 'Note',
+    content: oldtext,
+    html: true,
+    placement: 'left',
+    trigger: 'hover'
+  });
+});
+
+$("#domainstbl" ).tablesorter({ sortList: [[0, 1], [2, 1], [1, 0]] });
+});
+[% END %]
+[% PROCESS tablesorter.tt2 %]
+[% PROCESS database.tt2 %]
+[% PROCESS data.tt2 %]
+[% WRAPPER page %]
+<h2>Autorità per le garanzie nelle comunicazioni</h2>
+<p>Nel dicembre 2013 l'Autorità per le garanzie nelle comunicazioni ha
+emanato un <em><a href="http://www.agcom.it/Default.aspx?DocID=12229">
+Regolamento in materia di tutela del diritto d'autore sulle reti di
+comunicazione elettronica</a></em>, con cui si è organizzata per
+censurare siti ritenuti violare il diritto d'autore.</p>
+
+[% IF 0 %]
+<p>È disponibile un <a class="feed" href="[% site.url.root %]atom.xml">feed
+ATOM di questi provvedimenti</a>.
+[% END %]
+
+<table id="domainstbl" class="table table-bordered table-hover table-condensed tablesorter">
+<caption>Domini attualmente censurati</caption>
+<thead>
+<tr>
+ <td>Data</td>
+ <td>Dominio</td>
+ <td>Delibera</td>
+ <td>Note</td>
+</tr>
+</thead>
+<tbody>
+[% FOREACH domain = domains_agcom.search([
+     'end', undef,
+     'end', ''
+   ], {
+     'order_by' => { '-desc' => 'date', '-desc' => 'resolution' },
+   }) %]
+<tr>
+ <td>[% domain.date.ymd %]</td>
+ <td><a rel="nofollow" href="http://[% domain.name | html %]/">[% domain.name | html %]</a></td>
+ <td>[% IF domain.resolution_url %]
+<a href="[% domain.resolution_url %]">[% domain.resolution | html %]</a>
+[% ELSE %]
+[% domain.resolution | html %]
+[% END %]
+</td>
+ <td>[% IF domain.also_ip %]
+<span class="label label-warning">IP</span>
+[% END %]
+[% format_note(domain.notes) %]</td>
+</tr>
+
+[% END %]
+</tbody>
+</table>
+
+<dl class="dl-horizontal">
+<dt><span class="label label-warning">IP</span></dt>
+<dd>È richiesta la censura anche dell'IP associato al dominio.</dd>
+</dl>
+[% END %]

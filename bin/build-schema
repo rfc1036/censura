@@ -21,6 +21,9 @@ make_schema_at(
 		dump_directory	=> "$RealBin/../lib",
 		components		=> [qw(InflateColumn::DateTime)],
 		datetime_timezone => 'Europe/Rome',
+		moniker_map		=> {
+			domains_agcom => 'DomainAgcom',
+		},
     },
 	[ "dbi:SQLite:dbname=$dbfile" ],
 );

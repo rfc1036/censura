@@ -1,0 +1,64 @@
+[% page.h1 = 'Osservatorio sulla censura di Internet in Italia' %]
+[% page.css = BLOCK %]
+#censoredtotal { font-size: 600%; line-height: 100%; align: center }
+@media (max-width: 979px) and (max-width: 979px) {
+  #censoredtotal { font-size: 400% }
+}
+.feed {
+  margin-left: 3px;
+  padding: 0 0 0 19px;
+  background: url("[% site.url.images %]/feed-icon-14x14.png") no-repeat 0 50%;
+}
+[% END %]
+[% page.head = BLOCK %]
+    <link href="[% site.url.root %]atom.xml" type="application/atom+xml" 
+     rel="alternate" title="Aggiornamenti sulla censura">
+[% END %]
+[% PROCESS data.tt2 %]
+[% WRAPPER page %]
+<div class="hero-unit">
+<blockquote>
+<p class="lead">cen|s&ugrave;|ra, s.f.: controllo esercitato da un'autorit&agrave; civile o
+religiosa su pubblicazioni, spettacoli, mezzi di informazione, per
+adeguarli ai principi della legge, di una religione o di una dottrina morale.</p>
+<div class="pull-right"><small>Tullio De Mauro, il dizionario della lingua italiana</small></div>
+</blockquote>
+</div>
+
+<div class="row">
+<div class="span3"><div class="well">
+<h2>Siti censurati</h2>
+<ul>
+<li>[% stats.censored.ag %] con singoli provvedimenti dell'autorità 
+giudiziaria o di organi amministrativi.</li>
+<li>[% stats.censored.cncpo %] dal <abbr title="Centro nazionale
+per il contrasto alla pedopornografia online">CNCPO</abbr>.</li>
+<li>[% stats.censored.aams %] da <abbr title="Agenzia delle Dogane e dei Monopoli">AAMS</abbr>.</li>
+<li>[% stats.censored.agcom %] da <abbr title="Autorità per le garanzie
+nelle comunicazioni">AGCOM</abbr>.</li>
+</ul>
+<hr style="margin: 0">
+<div id="censoredtotal">[% stats.censored.total %]</div>
+<p>siti oggi sono censurati in Italia.</p>
+<p style="margin-top: 40px">
+<a class="btn btn-info btn-large" href="[% site.url.root %]elenchi.html">
+<i class="icon-info-sign"></i> Elenchi</a></p>
+<p style="margin-top: 40px"><a class="feed" 
+ href="[% site.url.root %]atom.xml">Feed con gli aggiornamenti.</a>
+</div></div>
+
+<div class="span3"><div class="well">
+<h2>Chi censura Internet in Italia?</h2>
+<ul>
+<li>L'autorità giudiziaria.</li>
+<li>La polizia postale e delle comunicazioni (tramite il 
+<a href="http://www.poliziadistato.it/articolo/10232/">
+<abbr title="Centro nazionale per il contrasto alla pedopornografia 
+online">CNCPO</abbr></a>).</li>
+<li>L'Agenzia delle Dogane e dei Monopoli (ex AAMS).</li>
+<li>L'Autorità Garante della Concorrenza e del Mercato.</li>
+<li>L'Autorità per le garanzie nelle comunicazioni.</li>
+</ul>
+</div></div>
+</div>
+[% END %]

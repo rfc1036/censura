@@ -33,7 +33,16 @@ my $c = $schema->resultset('Domain')->search([
 	distinct => 1,
 });
 
+my $ca = $schema->resultset('DomainAgcom')->search([
+	'end' => undef,
+	'end' => '',
+], {
+	columns => [ 'name' ],
+	distinct => 1,
+});
+
 my $count = $c->count || die;
+my $count_agcom = $ca->count || die;
 my $remote_data =
 	get_remote_data('http://anubi.seeweb.it/cgi-bin/censorship-stats');
 my $num_cncpo = $remote_data->{cncpo} || die;
@@ -44,8 +53,9 @@ my $stats = <<END;
   stats.censored.ag = $count;
   stats.censored.cncpo = $num_cncpo;
   stats.censored.aams = $num_aams;
+  stats.censored.agcom = $count_agcom;
   stats.censored.total = stats.censored.ag + stats.censored.cncpo
-    + stats.censored.aams;
+    + stats.censored.aams + stats.censored.agcom;
 %]
 END
 write_file("$RealBin/../ttlib/data.tt2", $stats);

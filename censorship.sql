@@ -41,6 +41,22 @@ CREATE INDEX idx_domains_name    ON domains(name);
 CREATE UNIQUE INDEX idx_domains_request_name ON domains(request, name);
 
 -- Useless "id" column added for the benefit of Dancer::Plugin::SimpleCRUD
+CREATE TABLE domains_agcom (
+	id		INTEGER PRIMARY KEY,
+	date		DATE NOT NULL,
+	end		DATE,
+	name		TEXT NOT NULL,
+	also_ip		BOOLEAN,
+	resolution	TEXT NOT NULL,
+	resolution_url	TEXT,
+	notes		TEXT,
+	test_url	TEXT
+);
+CREATE INDEX idx_domains_agcom_request ON domains_agcom(resolution);
+CREATE INDEX idx_domains_agcom_name    ON domains_agcom(name);
+CREATE UNIQUE INDEX idx_domains_agcom_request_name ON domains_agcom(resolution, name);
+
+-- Useless "id" column added for the benefit of Dancer::Plugin::SimpleCRUD
 CREATE TABLE links (
 	id		INTEGER PRIMARY KEY,
 	request		INTEGER NOT NULL
