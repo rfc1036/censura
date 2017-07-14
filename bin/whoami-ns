@@ -18,6 +18,7 @@ use Net::DNS::Nameserver;
 use Net::Server::Daemonize qw(daemonize);
 use File::Slurp;
 use IO::File;
+use Time::Piece;
 
 my @listen = qw(85.94.204.153 2001:4b78:2000::53);
 my $DB_Dir = '/dev/shm/whoami-ns';
@@ -71,7 +72,8 @@ sub reply_handler {
 	$qname ||= '.';
 	my $query = lc $qname;
 
-	print $Log_FH "[$peerhost] $query $qclass $qtype\n" if $Log_FH;
+	print $Log_FH localtime->datetime
+		. " [$peerhost] $query $qclass $qtype\n" if $Log_FH;
 
 	if ($qclass eq 'CH' and $qtype eq 'TXT') {
 		if ($query eq 'version.bind') {
