@@ -81,6 +81,10 @@ sub reply_handler {
 		}
 	}
 
+	# ignore DDoS attemps
+	return undef
+		if $qclass eq 'IN' and $qtype eq 'ANY' and $query eq 'isc.org';
+
 	# Only accept queries for records for which we are authoritative,
 	# or else send the smallest possible answer to not be an attractive
 	# reflector for spoofed DDoS attacks.
