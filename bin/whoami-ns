@@ -80,6 +80,11 @@ sub reply_handler {
 		return ('BADVERS', [], [], [], {})
 			if $packet->edns->version > 0;
 
+		# https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml#dns-parameters-11
+		# RFC5001. 3: NSID
+		$opts{NSID} = $Public_Name
+			if defined $packet->edns->option('NSID') and $Public_Name;
+
 		# log the EDNS options in the query
 		my @options_list = $packet->edns->options;
 		foreach (sort { $a <=> $b } @options_list) {
