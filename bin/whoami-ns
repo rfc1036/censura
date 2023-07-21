@@ -71,17 +71,34 @@ $ns->main_loop;
 ##############################################################################
 sub reply_handler {
 	my ($qname, $qclass, $qtype, $peerhost, $packet) = @_;
-	my ($rcode, @ans, @auth, @add);
+	my ($rcode, @ans, @auth, @add, %opts);
+	my $more_log = '';
+
+	# handle EDNS(0) options
+	if ($packet->edns->_specified) {
+		# RFC6891, 6.1.3. OPT Record TTL Field Use
+		return ('BADVERS', [], [], [], {})
+			if $packet->edns->version > 0;
+
+		# log the EDNS options in the query
+		my @options_list = $packet->edns->options;
+		foreach (sort { $a <=> $b } @options_list) {
+			$more_log .= " ednsopt=$_:"
+				. join('', unpack('H*', scalar $packet->edns->option($_)));
+		}
+	} else {
+		$more_log .= ' noedns';
+	}
 
 	$qname ||= '.';
 	my $query = lc $qname;
 
 	print $Log_FH localtime->datetime
-		. " [$peerhost] $query $qclass $qtype\n" if $Log_FH;
+		. " [$peerhost] $query $qclass $qtype$more_log\n" if $Log_FH;
 
 	if ($qclass eq 'CH' and $qtype eq 'TXT') {
 		if ($query eq 'version.bind') {
-			return ('NOERROR', [$AuthRR->{version}], [], [], {});
+			return ('NOERROR', [$AuthRR->{version}], [], [], {}, \%opts);
 		}
 		# id.server: RFC 4892
 		if ($Public_Name and
@@ -93,7 +110,7 @@ sub reply_handler {
 				type => 'TXT',
 				txtdata => $Public_Name,
 			);
-			return ('NOERROR', [$rr], [], [], {});
+			return ('NOERROR', [$rr], [], [], {}, \%opts);
 		}
 	}
 
@@ -103,10 +120,10 @@ sub reply_handler {
 	# Only accept queries for records for which we are authoritative,
 	# or else send the smallest possible answer to not be an attractive
 	# reflector for spoofed DDoS attacks.
-	return ('REFUSED', [], [], [], {})
+	return ('REFUSED', [], [], [], {}, \%opts)
 		if $query !~ /\b$My_Zone$/o or $qclass ne 'IN';
 
-	#return ('NXDOMAIN', $AuthRR->{apex}->{SOA}, [], [], { aa => 1 })
+	#return ('NXDOMAIN', $AuthRR->{apex}->{SOA}, [], [], { aa => 1 }, \%opts)
 	#	if ...;
 
 	my $where = $query eq $My_Zone ? 'apex' : 'all';
@@ -134,7 +151,7 @@ sub reply_handler {
 		db_add($1, $peerhost) if $query =~ /^([a-z0-9-]+)\./i;
 	}
 
-	return ($rcode || 'NOERROR', \@ans, \@auth, \@add, { aa => 1 });
+	return ($rcode || 'NOERROR', \@ans, \@auth, \@add, { aa => 1 }, \%opts);
 }
 
 ##############################################################################
