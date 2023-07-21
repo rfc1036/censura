@@ -85,6 +85,9 @@ sub reply_handler {
 		$opts{NSID} = $Public_Name
 			if defined $packet->edns->option('NSID') and $Public_Name;
 
+		# RFC7830. 12: Padding
+		$opts{PADDING} = 'Say hi! I am md@linux.it.';
+
 		# log the EDNS options in the query
 		my @options_list = $packet->edns->options;
 		foreach (sort { $a <=> $b } @options_list) {
