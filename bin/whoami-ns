@@ -25,6 +25,7 @@ my $DB_Dir = '/dev/shm/whoami-ns';
 my $Debug_Log = '/tmp/whoami-ns.log';
 my $My_Zone = 'whoami.bofh.it';		# zone apex
 my $My_NS = 'whoami.ns.bofh.it';	# name server for the zone
+my $Public_Name = $My_NS;			# returned by server.id, etc, if defined
 
 # This is just a simple way of organizing configuration values, not a
 # generic data structure to support serving arbitrary DNS records.
@@ -81,6 +82,18 @@ sub reply_handler {
 	if ($qclass eq 'CH' and $qtype eq 'TXT') {
 		if ($query eq 'version.bind') {
 			return ('NOERROR', [$AuthRR->{version}], [], [], {});
+		}
+		# id.server: RFC 4892
+		if ($Public_Name and
+				($query eq 'hostname.bind' or $query eq 'id.server')) {
+			my $rr = Net::DNS::RR->new(
+				owner => $qname,
+				ttl => 0,
+				class => 'CH',
+				type => 'TXT',
+				txtdata => $Public_Name,
+			);
+			return ('NOERROR', [$rr], [], [], {});
 		}
 	}
 
