@@ -50,6 +50,8 @@ my $Log_FH;
 if ($Debug_Log) {
 	$Log_FH = IO::File->new($Debug_Log, '>>') or die "open($Debug_Log): $!";
 	$Log_FH->autoflush;
+} else {
+	$Log_FH = \*STDOUT;
 }
 
 -d $DB_Dir or mkdir $DB_Dir or die "mkdir($DB_Dir): $!";
