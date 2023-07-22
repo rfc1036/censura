@@ -128,8 +128,13 @@ sub reply_handler {
 	# Only accept queries for records for which we are authoritative,
 	# or else send the smallest possible answer to not be an attractive
 	# reflector for spoofed DDoS attacks.
-	return ('REFUSED', [], [], [], {}, \%opts)
-		if $query !~ /\b$My_Zone$/o or $qclass ne 'IN';
+	if ($query !~ /\b$My_Zone$/o or $qclass ne 'IN') {
+		$opts{'EXTENDED-ERROR'} = {
+			'INFO-CODE' => 20,	# Not Authoritative
+			'EXTRA-TEXT' => '',
+		} if $packet->edns->_specified;
+		return ('REFUSED', [], [], [], {}, \%opts);
+	}
 
 	#return ('NXDOMAIN', $AuthRR->{apex}->{SOA}, [], [], { aa => 1 }, \%opts)
 	#	if ...;
