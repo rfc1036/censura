@@ -88,6 +88,33 @@ sub reply_handler {
 		# RFC7830. 12: Padding
 		$opts{PADDING} = 'Say hi! I am md@linux.it.';
 
+		# RFC7873. 10: COOKIE
+		if (my $cookie = $packet->edns->option('COOKIE')) {
+			my $len = length $cookie;
+
+			# 5.2.2. Malformed COOKIE Option
+			return ('FORMERR', [], [], [], {}, \%opts)
+				if not ($len == 8 or ($len >= 16 and $len <= 40));
+
+			# FIXME the server cookie must not be constant!
+			my $my_cookie = 'abcdefghij';
+
+			if ($len == 8) {
+				# 5.2.3. Only a Client Cookie
+				$opts{COOKIE} = $cookie . $my_cookie;
+			} else {
+				# extract the server cookie echoed by the client
+				my $server_cookie = substr($cookie, 8);
+
+				# 5.2.4. A Client Cookie and an Invalid Server Cookie
+				return ('BADCOOKIE', [], [], [], {}, \%opts)
+					if $server_cookie ne $my_cookie;
+
+				# 5.2.5. A Client Cookie and a Valid Server Cookie
+				$opts{COOKIE} = $cookie; # contains the client+server cookies
+			}
+		}
+
 		# log the EDNS options in the query
 		my @options_list = $packet->edns->options;
 		foreach (sort { $a <=> $b } @options_list) {
